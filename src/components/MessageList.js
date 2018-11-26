@@ -8,8 +8,10 @@ import Avatar from 'components/Avatar';
 import OfflineForm from 'components/OfflineForm';
 import PrechatForm from 'components/PrechatForm';
 import ChatRating from 'components/ChatRating';
+import SystemMessages from 'utils/Messages';
 
 class MessageList extends Component {
+  
   constructor(props) {
     super(props);
     this.renderTyping = this.renderTyping.bind(this);
@@ -52,11 +54,26 @@ class MessageList extends Component {
           />
         );
       case 'chat.rating':
-        return <ChatRating key={msg.type + msg.timestamp}/>;
+      case 'chat.request.rating':
+        return <ChatRating key={msg.type + msg.timestamp} agent="Agente" visitor = {this.props.visitor} fetchedMessage = {msg.fetchedMessage}/>;
       case 'offline':
-        return <OfflineForm key="offline" />;
+         if (this.props.visitor.email) {
+           return (
+              <ChatMessage
+                key={msg.type + msg.timestamp}
+                message={msg}
+                addClass={addClass}
+                agent={this.props.agents[msg.nick]}
+          />
+          );
+         }
+         else {
+           return (
+              <OfflineForm key="offline" visitor = {this.props.visitor} />
+           );
+         }
       case 'prechat':
-        return <PrechatForm key="prechat" />;
+        return <PrechatForm key="prechat" isOffline= {this.props.isOffline} visitor = {this.props.visitor} />;
       default:
         return <div key={+new Date()}>Unhandled message: {JSON.stringify(msg)}</div>
     }
@@ -86,20 +103,21 @@ class MessageList extends Component {
   }
 
   renderAll(isOffline, messages) {
+    console.log(this.props.isFetching,this.props.messages.length)
     if (isOffline) {
-      messages = [];
-      messages.push({
-        type: 'chat.msg',
-        display_name: 'Chat Agent',
-        nick: 'agent:offline',
-        timestamp: +new Date(),
-        member_type: 'agent',
-        msg: 'Sorry, we are offline at the moment. Please leave us your contact information and we will get back to you soon!'
-      });
+      //messages = [];
+      // messages.push({
+      //   type: 'chat.msg',
+      //   display_name: 'Chat Agent',
+      //   nick: 'agent:offline',
+      //   timestamp: +new Date(),
+      //   member_type: 'agent',
+      //   msg: SystemMessages.OFFLINEMESSAGE
+      // });
       messages.push({
         type: 'offline'
       });
-    } else if (!this.props.isChatting) {
+    } else if (!this.props.messages.length && !this.props.isFetching) {
       messages = [{
         type: 'prechat'
       }];

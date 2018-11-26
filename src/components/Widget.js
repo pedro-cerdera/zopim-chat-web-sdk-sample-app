@@ -1,15 +1,14 @@
 require('styles/Widget.scss');
 
-import config from 'config';
+import config from '../config/index';
 import React, { Component } from 'react';
 import { connect } from 'react-redux'
-import StatusContainer from 'components/StatusContainer';
 import MessageList from 'components/MessageList';
-import ChatButton from 'components/ChatButton';
 import Input from 'components/Input';
 import { log, get, set } from 'utils';
 import { debounce } from 'lodash';
 import zChat from 'vendor/web-sdk';
+import SystemMessages from 'utils/Messages'
 
 const { ENV, ACCOUNT_KEY, THEME } = config;
 
@@ -23,7 +22,8 @@ class App extends Component {
     this.state = {
       theme: THEME,
       typing: false,
-      visible: false
+      visible: true,
+      blockInput: false,
     };
     this.timer = null;
     this.handleOnSubmit = this.handleOnSubmit.bind(this);
@@ -39,10 +39,99 @@ class App extends Component {
     this.handleFileUpload = this.handleFileUpload.bind(this);
   }
 
+  componentWillReceiveProps(nextProps){
+    if (this.props.data.error !== nextProps.data.error){
+      if (nextProps.data.error.detail.extra.reason === 'jwt verification error'){
+        zChat.init({
+          account_key: ACCOUNT_KEY
+        });
+        nextProps.dispatch({
+          type: 'is_fetching_history',
+          detail: false
+        });
+      }
+    }
+    else if ((this.props.data.connection !== nextProps.data.connection && nextProps.data.connection === 'connected') || (this.props.data.has_more_message !== nextProps.data.has_more_message && nextProps.data.has_more_message)){
+      nextProps.dispatch({
+        type: 'has_more_message',
+        detail: false
+      });
+      nextProps.dispatch({
+        type: 'is_fetching_history',
+        detail: true
+      });
+      zChat.fetchChatHistory(function(err, data) {
+        if (!err) {
+            nextProps.dispatch({
+              type: 'has_more_message',
+              detail: data.has_more
+            });
+            if (!data.has_more){
+              nextProps.dispatch({
+                type: 'is_fetching_history',
+                detail: false
+              });
+            }
+        } else {
+          nextProps.dispatch({
+            type: 'is_fetching_history',
+            detail: false
+          });
+        }
+      });
+    }
+    else if (
+      ((this.props.data.account_status !== nextProps.data.account_status && !this.props.data.fetching_history) 
+      || (this.props.data.fetching_history !== nextProps.data.fetching_history && !nextProps.data.fetching_history))     
+      && nextProps.data.account_status === 'offline'  
+      
+      ){
+        nextProps.dispatch({
+          type: 'synthetic',
+          detail: {
+            type: 'agent_send_msg',
+            msg: SystemMessages.OFFLINEMESSAGE
+          }
+        });
+    }
+    else if (this.props.data.account_status === 'offline' && nextProps.data.account_status === 'online'  && !nextProps.data.fetching_history) 
+      {
+        this.setState({
+          blockInput: false,
+        });
+        nextProps.dispatch({
+          type: 'synthetic',
+          detail: {
+            type: 'agent_send_msg',
+            msg: SystemMessages.ONLINEMESSAGE
+          }
+        });
+      }
+  }
+
   componentDidMount() {
-    zChat.init({
-      account_key: ACCOUNT_KEY
-    });
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+
+    if (token){
+      zChat.init({
+        account_key: ACCOUNT_KEY,
+        authentication: {
+          jwt_fn: function(callback) {
+            callback(token);
+          }
+        }
+      });
+    } else {
+      zChat.init({
+        account_key: ACCOUNT_KEY
+      });
+      this.props.dispatch({
+        type: 'is_fetching_history',
+        detail: false
+      });
+    }
 
     const events = [
       'account_status',
@@ -51,7 +140,8 @@ class App extends Component {
       'visitor_update',
       'agent_update',
       'chat',
-      'error'
+      'error',
+      'history'
     ];
 
     events.forEach((evt) => {
@@ -93,30 +183,55 @@ class App extends Component {
     event && event.preventDefault();
 
     // Don't allow visitor to send msg if not chatting
-    if (this.isOffline()) return;
-
-    const msg = this.refs.input.getRawInput().value;
-
-    // Don't send empty messages
+    
+    let msg = this.refs.input.getRawInput().value;
     if (!msg) return;
 
-    // Immediately stop typing
-    this.stopTyping.flush();
-    zChat.sendChatMsg(msg, (err) => {
-      if (err) {
-        log('Error occured >>>', err);
-        return;
-      }
-    });
+    if (this.isOffline() && this.props.data.visitor) {
+      zChat.sendOfflineMsg({
+        name: this.props.data.visitor.display_name,
+        email: this.props.data.visitor.email,
+        message: msg
+      }, (err) => {
+        if (err) return;
+        this.setState({
+          sent: true
+        });
+      });
+      msg = SystemMessages.TICKETSENT;
+      this.props.dispatch({
+        type: 'synthetic',
+        detail: {
+          type: 'agent_send_msg',
+          msg
+        }
+      });
+      this.setState({
+        blockInput:true,
+      })
+    }
+    else {
+      this.stopTyping.flush();
+      zChat.sendChatMsg(msg, (err) => {
+        if (err) {
+          log('Error occured >>>', err);
+        }
+      });
+      this.props.dispatch({
+        type: 'synthetic',
+        detail: {
+          type: 'visitor_send_msg',
+          msg
+        }
+      });
 
-    this.props.dispatch({
-      type: 'synthetic',
-      detail: {
-        type: 'visitor_send_msg',
-        msg
-      }
-    });
+    }
     this.refs.input.getRawInput().value = '';
+    // Don't send empty messages
+    
+
+    // Immediately stop typing
+    
   }
 
   handleFileUpload(event) {
@@ -174,7 +289,7 @@ class App extends Component {
   mapToEntities(visitor, agents) {
     const entities = {};
     if (visitor) {
-      entities[visitor.nick] = {
+      entities[visitor.email] = {
         ...visitor,
         type: 'visitor'
       };
@@ -221,7 +336,7 @@ class App extends Component {
   }
 
   isOffline() {
-    return this.props.data.account_status === 'offline' && !this.props.data.is_chatting;
+    return this.props.data.account_status === 'offline';
   }
 
   render() {
@@ -244,26 +359,28 @@ class App extends Component {
 
     const entities = this.mapToEntities(this.props.data.visitor, this.props.data.agents);
     const isOffline = this.isOffline();
-
+    console.log(this.props.data.fetching_history, this.props.data.chats.length)
     return (
       <div className="index">
         <div className={`widget-container ${this.getTheme()} ${this.getVisibilityClass()}`}>
-          <StatusContainer
+          {/* <StatusContainer
             accountStatus={this.props.data.account_status}
             minimizeOnClick={this.minimizeOnClick}
-          />
+          /> */}
           <MessageList
             isChatting={this.props.data.is_chatting}
             isOffline={isOffline}
+            isFetching={this.props.data.fetching_history}
             messages={this.props.data && this.props.data.chats.toArray()}
             agents={this.props.data.agents}
+            visitor={this.props.data.visitor}
             entities={entities}
           />
-          <div className={`spinner-container ${this.state.visible && this.props.data.connection !== 'connected' ? 'visible' : ''}`}>
+          <div className={`spinner-container ${this.props.data.connection !== 'connected'? 'visible' : ''}`}>
             <div className="spinner"></div>
           </div>
           <Input
-            addClass={this.props.data.is_chatting ? 'visible' : ''}
+            addClass={(this.props.data.is_chatting || !!this.props.data.visitor.email) && !this.state.blockInput && this.props.data.chats.length ? 'visible' : ''}
             ref="input"
             onSubmit={this.handleOnSubmit}
             onChange={this.handleOnChange}
@@ -271,7 +388,7 @@ class App extends Component {
             onFileUpload={this.handleFileUpload}
           />
         </div>
-        <ChatButton addClass={this.getVisibilityClass()} onClick={this.chatButtonOnClick} />
+        {/* <ChatButton addClass={this.getVisibilityClass()} onClick={this.chatButtonOnClick} /> */}
       </div>
     );
   }

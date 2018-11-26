@@ -4,23 +4,36 @@ import SortedMap from 'collections/sorted-map';
 
 const DEFAULT_STATE = {
 	connection: 'closed',
-	account_status: 'offline',
+	account_status: 'connecting',
 	departments: {},
 	visitor: {},
 	agents: {},
 	chats: SortedMap(),
 	last_timestamp: 0,
-	is_chatting: false
+	is_chatting: false,
+	error: null,
+	has_more_message: false,
+	fetching_history: true
 };
 
 // IMPT: Need to return on every case
 function update(state = DEFAULT_STATE, action) {
 	log('action', action);
 
-	if (action.detail && action.detail.timestamp)
+	if (action.detail && action.detail.timestamp && action.detail.timestamp > state.last_timestamp)
 		state.last_timestamp = action.detail.timestamp;
 
 	switch (action.type) {
+		case 'has_more_message':
+			return {
+				...state,
+				has_more_message: action.detail
+			}
+		case 'is_fetching_history':
+			return {
+				...state,
+				fetching_history: action.detail
+			}		
 		case 'connection_update':
 			return {
 				...state,
@@ -59,6 +72,7 @@ function update(state = DEFAULT_STATE, action) {
 					}
 				}
 			};
+		case 'history':
 		case 'chat':
 			let new_state = { ...state };
 			switch (action.detail.type) {
@@ -103,6 +117,8 @@ function update(state = DEFAULT_STATE, action) {
 					// Ensure that triggers are uniquely identified by their display names
 					if (isTrigger(action.detail.nick))
 						action.detail.nick = `agent:trigger:${action.detail.display_name}`;
+					if (state.fetching_history)
+						action.detail.fetchedMessage = true;
 					new_state.chats = state.chats.concat({
 						[action.detail.timestamp]: {
 							...action.detail,
@@ -129,9 +145,18 @@ function update(state = DEFAULT_STATE, action) {
 							}
 						}
 					};
+				
 				default:
 					return state;
-			}
+			};
+		case 'error':
+			return {
+				...state,
+				error: {
+					fetching_history: false,
+					detail: action.detail
+				}
+			};
 		default:
 			log('unhandled action', action);
 			return state;
@@ -177,6 +202,19 @@ function storeHandler(state = DEFAULT_STATE, action) {
 						source: 'local'
 					}
 				}
+				break;
+			case 'agent_send_msg':
+				new_action = {
+					type: 'chat',
+					detail: {
+						type: 'chat.msg',
+						display_name: state.visitor.display_name,
+						nick: 'agent:',
+						timestamp: new_timestamp,
+						msg: action.detail.msg,
+						source: 'local'
+					}
+				};
 				break;
 			default:
 				new_action = action;

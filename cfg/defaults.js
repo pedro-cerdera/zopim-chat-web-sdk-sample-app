@@ -3,7 +3,7 @@ const path = require('path');
 const autoprefixer = require('autoprefixer');
 const srcPath = path.join(__dirname, '/../src');
 const vendorPath = path.join(__dirname, '/../vendor');
-const dfltPort = 8000;
+const dfltPort = 3000;
 function getDefaultModules() {
   return {
     preLoaders: [{

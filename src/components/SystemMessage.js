@@ -1,6 +1,7 @@
 'use strict';
 
 import React, { Component } from 'react';
+import SystemMessages from 'utils/Messages'
 
 class SystemMessage extends Component {
   constructor(props) {
@@ -10,11 +11,11 @@ class SystemMessage extends Component {
   getMessageByType(msg) {
     switch (msg.type) {
       case 'chat.memberjoin':
-        return `${this.props.message.display_name} has joined the chat`;
+        return this.props.message.display_name + SystemMessages.JOINCHAT;
       case 'chat.memberleave':
-        return `${this.props.message.display_name} has left the chat`;
+        return this.props.message.display_name + SystemMessages.LEFTCHAT;
       case 'chat.wait_queue':
-        return `Please wait. There are currently ${msg.wait_queue} people(s) in the queue.`;
+        return SystemMessages.QUEUEMESSAGEBEFORE +  msg.wait_queue + SystemMessages.QUEUEMESSAGEAFTER ;
       default:
         return JSON.stringify(msg);
     }

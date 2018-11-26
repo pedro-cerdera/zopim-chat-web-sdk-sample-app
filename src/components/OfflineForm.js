@@ -57,11 +57,17 @@ class OfflineForm extends Component {
           <div className="content">
             <div className="section">
               <label className="label">Name</label>
-              <input ref="name" />
+              {!!this.props.visitor.email ?
+                <input ref="name" value={this.props.visitor.email && this.props.visitor.display_name} readOnly/> :
+                <input ref="name"/>
+              }
             </div>
             <div className="section">
               <label className="label">Email</label>
-              <input ref="email" />
+              {!!this.props.visitor.email ?
+                <input ref="email" value={this.props.visitor.email &&  this.props.visitor.email} readOnly/>:
+                <input ref="email"/>
+              }
             </div>
             <div className="section">
               <label className="label">Message</label>

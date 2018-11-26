@@ -38,7 +38,6 @@ class Input extends Component {
         this.props.addClass,
         this.state.dragover ? 'drag-drop-zone' : ''
       ].join(' ');
-
     return (
       <div className={class_name}
         onDrop={this.onDrop}
@@ -50,7 +49,7 @@ class Input extends Component {
             <input
               className="input"
               ref="input"
-              placeholder="Enter message here"
+              placeholder="Digite sua mensagem"
               onChange={this.props.onChange}
               onFocus={this.props.onFocus} />
             <SendButton onClick={this.props.onSubmit} />
