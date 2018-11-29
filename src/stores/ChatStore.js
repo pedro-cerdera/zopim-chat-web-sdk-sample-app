@@ -78,14 +78,14 @@ function update(state = DEFAULT_STATE, action) {
 			switch (action.detail.type) {
 				/* Web SDK events */
 				case 'chat.memberjoin':
-					if (isAgent(action.detail.nick)) {
+					if (isAgent(action.detail.nick) && action.detail.nick !== "agent:trigger:Customer Service") {
 						if (!new_state.agents[action.detail.nick]) new_state.agents[action.detail.nick] = {};
 						new_state.agents[action.detail.nick].nick = action.detail.nick;
 					}
 					else
 						new_state.visitor.nick = action.detail.nick;
 
-					if (!isAgent(action.detail.nick)) {
+					if (!isAgent(action.detail.nick) && action.type!=='history') {
 						new_state.is_chatting = true;
 					}
 
@@ -98,8 +98,14 @@ function update(state = DEFAULT_STATE, action) {
 
 					return new_state;
 				case 'chat.memberleave':
-					if (!isAgent(action.detail.nick)) {
+					if (!isAgent(action.detail.nick)  && action.type!=='history') {
 						new_state.is_chatting = false;
+					}
+					if (isAgent(action.detail.nick) && action.type!=='history') {
+						if ('chat.memberleave',new_state.agents[action.detail.nick]){
+							const {[action.detail.nick]:value,...change_state} = new_state.agents;
+							new_state.agents =change_state;
+						} 
 					}
 
 					// Concat this event to chats to be displayed

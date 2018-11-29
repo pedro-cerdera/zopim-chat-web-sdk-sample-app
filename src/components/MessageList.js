@@ -103,21 +103,7 @@ class MessageList extends Component {
   }
 
   renderAll(isOffline, messages) {
-    console.log(this.props.isFetching,this.props.messages.length)
-    if (isOffline) {
-      //messages = [];
-      // messages.push({
-      //   type: 'chat.msg',
-      //   display_name: 'Chat Agent',
-      //   nick: 'agent:offline',
-      //   timestamp: +new Date(),
-      //   member_type: 'agent',
-      //   msg: SystemMessages.OFFLINEMESSAGE
-      // });
-      messages.push({
-        type: 'offline'
-      });
-    } else if (!this.props.messages.length && !this.props.isFetching) {
+    if (!this.props.messages.length && !this.props.isFetching ) {
       messages = [{
         type: 'prechat'
       }];
@@ -125,13 +111,35 @@ class MessageList extends Component {
 
     let prev = null;
 
-    return messages.map((message) => {
+    return messages.map((message,index) => {
       let addClass = '',
           currentNick = message.nick,
           prevNick = prev && prev.nick;
+      
+      let nextPos = ++index;
+      let next = null;
+      let nextNick = null;
+      if (messages.length > nextPos){
+         next = messages[nextPos];
+         nextNick = next.nick;
+      }
 
-      if (prev && prev.type === message.type && currentNick && currentNick === prevNick)
-        addClass = 'sibling';
+      if (next && next.type === message.type && nextNick && currentNick === nextNick){
+          addClass = 'sibling';
+          if (prev && prev.type === message.type && currentNick && currentNick === prevNick){
+            addClass += ' middle-message';
+          }
+          else {
+            addClass += ' first-message';
+          } 
+      } else {
+        if (prev && prev.type === message.type && currentNick && currentNick === prevNick){
+          addClass = 'last-message';
+        }
+        else {
+          addClass = 'unique-message';
+        } 
+      }
 
       prev = message;
 

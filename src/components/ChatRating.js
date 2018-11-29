@@ -43,7 +43,9 @@ class ChatRating extends Component {
     else{
       return(
         <div className="system-msg-container">
-          <span className="system-msg">{SystemMessages.RATINGSENT}</span>
+          <div  className="system-msg">
+            <span className="system-msg-text">{SystemMessages.RATINGSENT}</span>
+          </div>
         </div>
       );
     }

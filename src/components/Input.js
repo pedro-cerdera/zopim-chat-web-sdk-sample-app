@@ -2,6 +2,8 @@
 
 import React, { Component } from 'react';
 import SendButton from 'components/SendButton';
+import ActionButton from 'components/ActionButton';
+import SystemMessages from 'utils/Messages';
 
 class Input extends Component {
   constructor(props) {
@@ -38,24 +40,30 @@ class Input extends Component {
         this.props.addClass,
         this.state.dragover ? 'drag-drop-zone' : ''
       ].join(' ');
-    return (
-      <div className={class_name}
-        onDrop={this.onDrop}
-        onDragOver={this.onDragOver}
-        onDragLeave={this.onDragLeave} >
-        <form
-          className="input-form"
-          onSubmit={this.props.onSubmit}>
-            <input
-              className="input"
-              ref="input"
-              placeholder="Digite sua mensagem"
-              onChange={this.props.onChange}
-              onFocus={this.props.onFocus} />
-            <SendButton onClick={this.props.onSubmit} />
-        </form>
-      </div>
-    );
+    if (this.props.inputEntryVisible){
+      return (
+        <div className={class_name}
+          onDrop={this.onDrop}
+          onDragOver={this.onDragOver}
+          onDragLeave={this.onDragLeave} >
+          <form
+            className="input-form"
+            onSubmit={this.props.onSubmit}>
+              <input
+                className="input"
+                ref="input"
+                placeholder="Digite sua mensagem"
+                onChange={this.props.onChange}
+                onFocus={this.props.onFocus} />
+              <SendButton onClick={this.props.onSubmit} />
+          </form>
+        </div>
+      );
+    } else {
+      return (
+        <div className={"offline-sent input-form "+class_name}><ActionButton  addClass="button-resend" onClick={this.props.onToggleVisible} label={SystemMessages.NEWREQUEST}/></div>
+      )
+    }
   }
 }
 

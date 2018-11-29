@@ -24,7 +24,9 @@ class SystemMessage extends Component {
   render() {
     return (
       <div className="system-msg-container">
-        <span className="system-msg">{this.getMessageByType(this.props.message)}</span>
+        <div className="system-msg">
+          <span className="system-msg-text">{this.getMessageByType(this.props.message)}</span>
+        </div>
       </div>
     );
   }

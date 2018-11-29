@@ -26,7 +26,7 @@ class ChatMedia extends Component {
 
   render() {
     return (
-      <div className="chat-media-container">
+      <div className="">
         {this.renderMediaByType(this.props.message)}
       </div>
     );

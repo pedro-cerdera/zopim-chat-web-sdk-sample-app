@@ -24,6 +24,7 @@ class App extends Component {
       typing: false,
       visible: true,
       blockInput: false,
+      agent_offline: false,
     };
     this.timer = null;
     this.handleOnSubmit = this.handleOnSubmit.bind(this);
@@ -37,11 +38,12 @@ class App extends Component {
     this.setVisible = this.setVisible.bind(this);
     this.setTheme = this.setTheme.bind(this);
     this.handleFileUpload = this.handleFileUpload.bind(this);
+    this.toggleInputVisible = this.toggleInputVisible.bind(this);
   }
 
   componentWillReceiveProps(nextProps){
     if (this.props.data.error !== nextProps.data.error){
-      if (nextProps.data.error.detail.extra.reason === 'jwt verification error'){
+      if (nextProps.data.error && nextProps.data.error.detail && nextProps.data.error.detail.extra && nextProps.data.error.detail.extra.reason === 'jwt verification error'){
         zChat.init({
           account_key: ACCOUNT_KEY
         });
@@ -107,6 +109,12 @@ class App extends Component {
           }
         });
       }
+    else if (this.props.data.agents !== nextProps.data.agents && Object.keys(nextProps.data.agents).length===0 && !this.props.data.fetching_history){
+        this.setState({
+          blockInput: true,
+          agent_offline: true,
+        });
+    } 
   }
 
   componentDidMount() {
@@ -162,6 +170,21 @@ class App extends Component {
       visible: get('visible') || this.state.visible,
       theme: get('theme') || this.state.theme
     });
+  }
+  toggleInputVisible() {
+    if (this.state.blockInput){
+      let msg = SystemMessages.NEWHELP;
+      this.props.dispatch({
+        type: 'synthetic',
+        detail: {
+          type: 'agent_send_msg',
+          msg
+        }
+      });
+    }
+    this.setState({
+      blockInput: !this.state.blockInput,
+    })
   }
 
   handleOnChange() {
@@ -336,6 +359,7 @@ class App extends Component {
   }
 
   isOffline() {
+    console.log(this.state.agent_offline)
     return this.props.data.account_status === 'offline';
   }
 
@@ -359,7 +383,7 @@ class App extends Component {
 
     const entities = this.mapToEntities(this.props.data.visitor, this.props.data.agents);
     const isOffline = this.isOffline();
-    console.log(this.props.data.fetching_history, this.props.data.chats.length)
+    console.log(this.props.data, Object.keys(this.props.data.agents).length)
     return (
       <div className="index">
         <div className={`widget-container ${this.getTheme()} ${this.getVisibilityClass()}`}>
@@ -380,8 +404,10 @@ class App extends Component {
             <div className="spinner"></div>
           </div>
           <Input
-            addClass={(this.props.data.is_chatting || !!this.props.data.visitor.email) && !this.state.blockInput && this.props.data.chats.length ? 'visible' : ''}
+            addClass={this.props.data.chats.length? 'visible' : ''}
+            inputEntryVisible = {!this.state.blockInput }
             ref="input"
+            onToggleVisible = {this.toggleInputVisible}
             onSubmit={this.handleOnSubmit}
             onChange={this.handleOnChange}
             onFocus={this.inputOnFocus}

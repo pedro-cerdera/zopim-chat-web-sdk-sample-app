@@ -7,6 +7,7 @@ export default {
     QUEUEMESSAGEBEFORE: 'Por favor espera, há ',
     QUEUEMESSAGEAFTER: ' pessoas na fila de espera',
     RATINGSENT: 'Sua avaliação foi enviada. Obrigado!',
-    REQUESTRATING: ' solicitou uma avaliação'
-
+    REQUESTRATING: ' solicitou uma avaliação', 
+    NEWREQUEST: 'Enviar outra solicitação',
+    NEWHELP: 'Como poderia te ajudar?'
 }
